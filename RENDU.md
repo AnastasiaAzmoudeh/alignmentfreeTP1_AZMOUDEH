@@ -42,7 +42,7 @@ Lorsqu'on compare la même espèce avec elle-même, la similarité de Jaccard se
 
 ### Matrice de Similarité de Jaccard
 
-La matrice de similarité obtenue pour cinq échantillons génomiques est la suivante :
+La matrice de similarité obtenue pour les cinq bactéries est la suivante :
 
 |                      | GCA_000008865.2 | GCA_000005845 | GCA_000069965.1 | GCA_000013265.1 | GCA_030271835.1 |
 |----------------------|-----------------|---------------|-----------------|-----------------|-----------------|
