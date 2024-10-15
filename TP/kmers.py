@@ -24,7 +24,7 @@ def encode_nucl(nucl,k):
 		nucl = kmer2str(nucl,k)  # Convertit un entier en caractère si nécessaire
 	
 
-	encoded = (ord(nucl) >> 1,k) & 0b11 # Extract the two bits of the ascii code that represent the nucleotide
+	encoded = (ord(nucl) >> 1) & 0b11 # Extract the two bits of the ascii code that represent the nucleotide
 	rencoded = (encoded + 2) & 0b11 # Complement encoding with bit tricks. Avoid slow if statement.
 
 	return encoded, rencoded
