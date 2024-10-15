@@ -1,104 +1,119 @@
 from TP.loading import load_directory,load_fasta
-from TP.kmers import stream_kmers, kmer2str,enumerate_kmers
-import numpy as np
-import csv
+from TP.kmers import stream_kmers, kmer2str
+from TP.hash import filter_smallest,hyperMinSketch,xorshift,partition_min_hash
 
 
-def jaccard(fileA, fileB, k):
-    j = 0
-    # --- To complete ---
+def jaccard_from_sorted_lists(lstA, lstB):
+    idxA = 0
+    idxB = 0
+
+    intersection = 0
+    union = 0
+
+    while idxA < len(lstA) and idxB < len(lstB):
+        union += 1
+        if lstA[idxA] == lstB[idxB]:
+            intersection += 1
+            idxA += 1
+            idxB += 1
+        elif lstA[idxA] < lstB[idxB]:
+            idxA += 1
+        else:
+            idxB += 1
+
+    union += len(lstA) - idxA
+    union += len(lstB) - idxB
+
+    return intersection / union
+
+def jaccard_hyperMinSketch_from_files(file1, file2, k,s):
+
     
-    """Calcule la similarité de Jaccard entre les k-mers de deux fichiers FASTA."""
+    seq1 = load_fasta(file1)
+    seq2 = load_fasta(file2)
     
-    # Charger les séquences des fichiers
+    # On applique la technique de filtrage pour ne garder que les plus petits k-mers
+    seq1 = filter_smallest(seq1,k,s)
+    seq2 = filter_smallest(seq2,k,s)
     
-    sequencesA = load_fasta(fileA)
-    sequencesB = load_fasta(fileB)
-    
-    # Concaténer toutes les séquences de l'échantillon en une seule chaîne
-    seqA = ''.join(sequencesA)  
-    seqB = ''.join(sequencesB)
-    
-    # Énumérer les k-mers des deux séquences
-    kmersA = set(enumerate_kmers(seqA, k))  # On utilise un set pour avoir les k-mers uniques
-    kmersB = set(enumerate_kmers(seqB, k))  # Idem
-    
-    # Initialisation des compteurs
-    intersection_count = 0
-    union_count = 0
-    
-    # Calcul de l'intersection (les k-mers communs)
-    for kmer in kmersA:
-        if kmer in kmersB:
-            intersection_count += 1  # On incrémente le compteur pour l'intersection
-    
-    # Calcul de l'union (les k-mers uniques entre les deux séquences)
-    union_set = kmersA.union(kmersB)  # Unir les deux ensembles de k-mers
-    union_count = len(union_set)  # On compte tous les k-mers dans l'union
+    for s1 in seq1:
+        kmer_list1.extend(filter_smallest(s1, k, s))  # Par exemple, garder les 100 plus petits k-mers
+    for s2 in seq2:
+        kmer_list2.extend(filter_smallest(s2, k, s))
+    # On utilise hyperMinSketch pour calculer l'intersection et l'union des k-mers
+    intersection, union = hyperMinSketch(seq1, seq2)
     
     # Calcul de la similarité de Jaccard
-    if union_count == 0:
-        return 0.0  # Éviter la division par zéro si l'union est vide
-    j=intersection_count / union_count  # Similarité de Jaccard
-    return j
-
-
+    if union == 0:
+        return 0.0  # Si l'union est vide, on retourne 0 pour éviter la division par zéro.
+    
+    jaccard_similarity = intersection / union
+    return jaccard_similarity
+    
+def jaccard_partition_minhash(seq1, seq2, num_partitions, num_hashes,s,k):
+	#seq1 = filter_smallest(seq1,k,s)
+	#seq2 = filter_smallest(seq2,k,s)
+	minhash_seq1 = partition_min_hash(seq1, num_partitions, num_hashes)
+	minhash_seq2 = partition_min_hash(seq2, num_partitions, num_hashes)
+	intersection = 0
+	union = 0
+    
+	# on compare les partitions une par une
+	for i in range(num_partitions):
+		for h in range(num_hashes):
+			union += 1
+			if minhash_seq1[i][h] == minhash_seq2[i][h]:
+				intersection += 1
+    
+    
+	return intersection / union
 
 if __name__ == "__main__":
-   
 	print("Computation of Jaccard similarity between files")
 
 	# Load all the files in a dictionary
+	print("Loading files")
 	files = load_directory("data")
 	k = 21
-    
-	print("Computing Jaccard similarity for all pairs of samples")
-	filenames = list(files.keys())
-	num_files = len(filenames)
+	s=10000
+	num_partitions=10000
+	num_hashes=10000
 	
-	print("Loaded files:")
-	for filename, sequences in files.items():
-		print(f"Filename: {filename}, Number of sequences: {len(sequences)}")
-		print(sequences)
+	
+    
+	filenames = list(files.keys())
+    
+	# Create all the kmer lists (can be expensive in memory)
+	print("Computing all kmer vectors")
+	kmer_lists = {}
+	for filename in filenames:
+		kmer_lists[filename] = []
+		# Enumerate all the sequences from a fasta
+		for seq in files[filename]:
+			kmer_lists[filename].extend(stream_kmers(seq, k))
+		# Sort the kmer lists to speed up the comparison
+		kmer_lists[filename].sort()
 
-	# Créer une matrice de similarité de Jaccard (initialisée avec des zéros)
-	jaccard_matrix = np.zeros((num_files, num_files))
+	#print("Computing Jaccard similarity for all pairs of samples")
+	#for i in range(len(files)):
+		#for j in range(i+1, len(files)):
+			#jaccard = jaccard_from_sorted_lists(kmer_lists[filenames[i]], kmer_lists[filenames[j]])
+            
+	#        print(filenames[i], filenames[j], jaccard)
+	
+	#print("Testing Jaccard similarity with HyperMinSketch")
+	#for i in range(len(files)):
+		#for j in range(i+1, len(files)):
+			#file1 = filenames[i]
+			#file2 = filenames[j]
+			#jaccard_hyperminsketch = jaccard_hyperMinSketch_from_files(file1, file2,k,1000)
+			#print(f"{filenames[i]} vs {filenames[j]} - HyperMinSketch Jaccard: {jaccard_hyperminsketch}")
+            
+                   
+	print("Testing Jaccard similarity with Partition MinHash")
 	for i in range(len(files)):
-		for j in range(i, len(files)):
-            
-			# --- Complete here ---
-            
-			if filenames[i] == filenames[j]:
-				# La similarité d'un fichier avec lui-même est toujours 1
-				jaccard_matrix[i, j] = 1.0
-				jaccard_matrix[j, i] = 1.0
-			else:
-                
-				# On calcule l'indice de Jaccard
-				jac= jaccard(files[filenames[i]], files[filenames[j]], k)
-				print("jac =",jac)
-				print(filenames[i],filenames[j],jac)
-
-				# On Remplit la matrice de Jaccard (symétrique)
-				jaccard_matrix[i, j] = jac
-				jaccard_matrix[j, i] = jac  # Symétrique
-
-	# Affichage de la matrice de Jaccard
-	print("Jaccard similarity matrix:")
-	print(jaccard_matrix)
-
-    # Sauvegarder la matrice dans un fichier CSV
-	output_file = "jaccard_matrix.csv"
-	with open(output_file, 'w', newline='') as csvfile:
-		writer = csv.writer(csvfile)
-
-		# Écrire l'entête (noms des échantillons)
-		writer.writerow([''] + filenames)
-
-		# Écrire les lignes de la matrice
-		for i in range(num_files):
-			writer.writerow([filenames[i]] + list(jaccard_matrix[i, :]))
-
-		print(f"Jaccard similarity matrix saved to {output_file}")
-
-            
+		for j in range(i+1, len(files)):
+			seq1 = kmer_lists[filenames[i]]
+			seq2 = kmer_lists[filenames[j]]
+			jaccard_minhash = jaccard_partition_minhash(seq1, seq2, num_partitions, num_hashes,s,k)
+			print(f"{filenames[i]} vs {filenames[j]} - Partition MinHash Jaccard: {jaccard_minhash}")
