@@ -24,5 +24,5 @@ Cette fonction charge deux fichiers de séquences FASTA, applique un filtrage po
 ### `jaccard_partition_minhash(seq1, seq2, num_partitions, num_hashes)`
 Cette fonction calcule la similarité de Jaccard entre deux séquences en utilisant la technique de **Partition MinHash**. Elle génère des signatures MinHash pour chaque partition de k-mers, puis compare ces signatures pour calculer l'intersection et l'union, et retourne la similarité de Jaccard.
 
-Il y a des problèmes cela ne marche pas. J'obtiens 0.
+Il y a des problèmes cela ne marche pas. J'obtiens 0. Je n'ai pas réussi à télécharger les données pour Homme,souris et singe. J'avais des fichiers vides.
 
